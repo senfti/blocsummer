@@ -18,12 +18,60 @@ NUM_BOULDERS = 40
 name_mapping = {"BLOC house:": "blockhouse", "Boulderclub:": "boulderclub", "Newton:": "newton"}
 
 
+url = "https://boulder-top.com/ranking-xmlhttp_loadRanking.php"
+
+boundary = "----geckoformboundarya290d78f07b4a4f1be564ef3c1e166bb"
+
+headers = {
+    "Accept": "*/*",
+    "Accept-Language": "de,en-US;q=0.9,en;q=0.8",
+    "Content-Type": f"multipart/form-data; boundary={boundary}",
+    "Origin": "https://boulder-top.com",
+    "Referer": "https://boulder-top.com/comp/bss26/page/ranking/r=251&k=687&v=198&c=190&h"
+}
+
+body_base = (
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="comp"\r\n\r\nbss26\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="CID"\r\n\r\n190\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="VID"\r\n\r\n198\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="REid"\r\n\r\n251\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="KLid"\r\n\r\n687\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="RankingTyp"\r\n\r\n1\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="REBez"\r\n\r\nGraz\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="KLBez"\r\n\r\nFrauen\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="GTyp"\r\n\r\n2\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="StartDate"\r\n\r\n2026-04-29 07:00:00\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="EndDate"\r\n\r\n2026-05-31 23:59:00\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="Backend"\r\n\r\n0\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="HAID"\r\n\r\n\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="AusgabeTyp"\r\n\r\n1\r\n'
+    f"--{boundary}\r\n"
+    'Content-Disposition: form-data; name="KWID"\r\n\r\n0\r\n'
+    f"--{boundary}--\r\n"
+).encode("utf-8")
+
+
 def get_participants(male: bool) -> List[str]:
     if male:
-        url = "https://boulder-top.com/ranking-xmlhttp_loadRanking.php?GTyp=2&CID=53&VID=42&REid=67&KLid=152&RankingTyp=1&REBez=Graz&KLBez=M%C3%A4nner&HAID="
+        body = body_base.replace(b"Frauen", b"M%C3%A4nner").replace(b"687", b"686")
     else:
-        url = "https://boulder-top.com/ranking-xmlhttp_loadRanking.php?GTyp=2&CID=53&VID=42&REid=67&KLid=153&RankingTyp=1&REBez=Graz&KLBez=Frauen&HAID="
-    text = requests.get(url).json()["Return_DIV_Body"]
+        body = body_base
+    response = requests.post(url, headers=headers, data=body)
+    text = response.json()["Return_DIV_Body"]
     participants = []
     for e in text.split('<div class="ranking-text"><span class="ranking-left">')[1:]:
         participants.append(e.split('id="s-')[1].split('"')[0].split("-")[-1])
@@ -32,14 +80,14 @@ def get_participants(male: bool) -> List[str]:
 
 
 def get_boulders(participant: str, male: bool) -> Dict[str, int]:
-    text = requests.get(f'https://boulder-top.com/comp/bss25/page/boulder-eintragen/t={participant}&k={152 if male else 153}&r=67&v=42&c=53&h=').text
+    text = requests.get(f'https://boulder-top.com/comp/bss26/page/boulder-eintragen/t={participant}&k={686 if male else 687}&r=251&v=198&c=190&h=').text
     boulders = {}
     for location, location_name in name_mapping.items():
         relevant = text.split(location)
         if len(relevant) < 2:
             boulders[location_name] = [0] * NUM_BOULDERS
         else:
-            parts = relevant[1].lower().split('https://boulder-top.com/assets/img/bss25/co_icon_bouldereintragen_')[1:NUM_BOULDERS+1]
+            parts = relevant[1].lower().split('https://boulder-top.com/assets/img/bss26/co_icon_bouldereintragen_')[1:NUM_BOULDERS+1]
             boulders[location_name] = [0 if p[0] == "n" else 1 for p in parts]
     return boulders
 
